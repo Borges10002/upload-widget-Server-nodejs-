@@ -6,10 +6,10 @@ import type { FastifyError } from 'fastify';
 import fastify from 'fastify';
 import {
   hasZodFastifySchemaValidationErrors,
-  jsonSchemaTransform,
   serializerCompiler,
   validatorCompiler,
 } from 'fastify-type-provider-zod';
+import { transformSwaggerSchema } from './routes/transform-swagger-schema';
 import { uploadImageRoute } from './routes/upload-image';
 
 const server = fastify();
@@ -50,7 +50,7 @@ server.register(fastifySwagger, {
       version: '1.0.0',
     },
   },
-  transform: jsonSchemaTransform,
+  transform: transformSwaggerSchema,
 });
 
 server.register(fastifySwaggerUi);
