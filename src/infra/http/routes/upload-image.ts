@@ -33,6 +33,12 @@ export const uploadImageRoute: FastifyPluginAsyncZod = async server => {
         contentStream: uploadedFile.file,
       });
 
+      if (uploadedFile.file.truncated) {
+        return reply
+          .status(400)
+          .send({ message: 'File size exceeds the limit of 2MB.' });
+      }
+
       if (isRight(result)) {
         return reply.status(201).send(null);
       }
