@@ -9,6 +9,7 @@ import {
   serializerCompiler,
   validatorCompiler,
 } from 'fastify-type-provider-zod';
+import { exportUploadsRoute } from './routes/export-uploads';
 import { getUploadsRoute } from './routes/get-uploads';
 import { transformSwaggerSchema } from './routes/transform-swagger-schema';
 import { uploadImageRoute } from './routes/upload-image';
@@ -18,7 +19,7 @@ const server = fastify();
 server.setValidatorCompiler(validatorCompiler);
 server.setSerializerCompiler(serializerCompiler);
 
-server.setErrorHandler((error: FastifyError, request, reply) => {
+server.setErrorHandler((error: FastifyError, _request, reply) => {
   if (hasZodFastifySchemaValidationErrors(error)) {
     return reply.status(400).send({
       message: 'Validation error',
@@ -58,6 +59,7 @@ server.register(fastifySwaggerUi);
 
 server.register(uploadImageRoute);
 server.register(getUploadsRoute);
+server.register(exportUploadsRoute);
 
 server
   .listen({

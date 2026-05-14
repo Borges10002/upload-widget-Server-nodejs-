@@ -1,4 +1,4 @@
-import { PassThrough } from 'node:stream';
+import { PassThrough, Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { stringify } from 'csv-stringify';
 import { ilike } from 'drizzle-orm';
@@ -17,6 +17,21 @@ type ExportUploadsInput = z.input<typeof exportUploadsInput>;
 type ExportUploadsOutput = {
   reportUrl: string;
 };
+
+type ExportUploadRow = {
+  id: string;
+  name: string;
+  remote_url: string;
+  created_at: Date;
+};
+
+async function* getRowsFromCursor(cursor: AsyncIterable<ExportUploadRow[]>) {
+  for await (const rows of cursor) {
+    for (const row of rows) {
+      yield row;
+    }
+  }
+}
 
 export async function exportUploads(
   input: ExportUploadsInput
@@ -37,6 +52,9 @@ export async function exportUploads(
     .toSQL();
 
   const cursor = pg.unsafe(sql, params as string[]).cursor(50);
+  const csvRows = Readable.from(
+    getRowsFromCursor(cursor as AsyncIterable<ExportUploadRow[]>)
+  );
 
   const csv = stringify({
     delimiter: ',',
@@ -51,18 +69,16 @@ export async function exportUploads(
 
   const uploadToStorageStream = new PassThrough();
 
-  const convertToCSVPipeline = pipeline(cursor, csv, uploadToStorageStream);
+  const convertToCSVPipeline = pipeline(csvRows, csv, uploadToStorageStream);
 
-  const uloadToStorage = uploadFileToStorage({
+  const uploadToStorage = uploadFileToStorage({
     contentType: 'text/csv',
     folder: 'downloads',
     fileName: `${new Date().toISOString()}-uploads.csv`,
     contentStream: uploadToStorageStream,
   });
 
-  const [{ url }] = await Promise.all([uloadToStorage, convertToCSVPipeline]);
-
-  console.log(url);
+  const [{ url }] = await Promise.all([uploadToStorage, convertToCSVPipeline]);
 
   return makeRight({ reportUrl: url });
 }
